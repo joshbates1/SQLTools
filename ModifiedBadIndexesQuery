@@ -2,7 +2,6 @@ This is a modified version of Glenn Berry's Possible Bad Indexes query that he i
 
 Glenn is also on Twitter at @GlennAlanBerry. Go follow him to stay updated on his diagnostic queries.
 
-
 Basically I wanted to see a percentage of Writes over Reads as regards nonclustered indexes so that I could make a decision as to whether said indexes should be disabled, modified, or removed.
 
 
