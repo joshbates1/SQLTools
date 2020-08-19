@@ -1,0 +1,47 @@
+This is a modified version of Glenn Berry's Possible Bad Indexes query that he includes in his regularly updated DMV Queries page located here: https://www.sqlskills.com/blogs/glenn/category/dmv-queries/
+
+Glenn is also on Twitter at @GlennAlanBerry. Go follow him to stay updated on his diagnostic queries.
+
+
+Basically I wanted to see a percentage of Writes over Reads as regards nonclustered indexes so that I could make a decision as to whether said indexes should be disabled, modified, or removed.
+
+
+CREATE TABLE #PossibleBadIndexes
+(
+              TableName varchar(60),
+              IndexName varchar(75),
+              IndexId int,
+              is_disabled bit,
+              TotalWrites float,
+              TotalReads float,
+              ReadToWriteRatio float,
+              [Difference] float
+)
+INSERT INTO #PossibleBadIndexes (TableName, IndexName, IndexId, is_disabled, TotalWrites, TotalReads, [Difference])
+SELECT OBJECT_NAME(s.[object_id]) AS [Table Name], i.name AS [Index Name], i.index_id, i.is_disabled,
+s.user_updates AS [Total Writes], s.user_seeks + s.user_scans + s.user_lookups AS [Total Reads],
+s.user_updates - (s.user_seeks + s.user_scans + s.user_lookups) AS [Difference]
+FROM sys.dm_db_index_usage_stats AS s WITH (NOLOCK)
+INNER JOIN sys.indexes AS i WITH (NOLOCK)
+ON s.[object_id] = i.[object_id]
+AND i.index_id = s.index_id
+WHERE OBJECTPROPERTY(s.[object_id],'IsUserTable') = 1
+AND s.database_id = DB_ID()
+AND s.user_updates > (s.user_seeks + s.user_scans + s.user_lookups)
+AND i.index_id > 1 AND i.[type_desc] = N'NONCLUSTERED'
+AND i.is_primary_key = 0 AND i.is_unique_constraint = 0 AND i.is_unique = 0
+ORDER BY [Difference] DESC, [Total Writes] DESC, [Total Reads] ASC OPTION (RECOMPILE);
+
+SELECT
+TableName AS [Table Name],
+IndexName AS [Index Name],
+TotalWrites AS [Total Writes],
+TotalReads AS [Total Reads],
+TotalWrites+TotalReads AS [Total Writes and Reads],
+[Difference] AS [Difference],
+CAST(TotalWrites/(TotalWrites+TotalReads) * 100 AS DECIMAL(15,10)) AS [Write Percentage],
+CAST(TotalReads/(TotalWrites+TotalReads) * 100 AS DECIMAL(15,10)) AS [Read Percentage],
+is_disabled AS [Is Disabled]
+FROM #PossibleBadIndexes
+ORDER BY [Read Percentage] ASC
+DROP TABLE #PossibleBadIndexes
