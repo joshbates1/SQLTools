@@ -1,0 +1,17 @@
+Often you may find that you have duplicate rows in a table and you need to get rid of them. The below will solve that problem for you.
+
+--Delete duplicates based on a single column
+;WITH CTE AS 
+(
+SELECT [ColumnName], RN = ROW_NUMBER()OVER(PARTITION BY CAST([ColumnName] AS VARCHAR(MAX)) ORDER BY CAST([ColumnName] AS VARCHAR(MAX)))
+FROM [dbo].[TableName]
+)
+DELETE FROM CTE WHERE RN > 1 
+
+
+--Delete duplicates based on column, include second (or more) column and add extra condition 
+;WITH CTE AS(
+SELECT [ColumnName], [ColumnName2], RN = ROW_NUMBER()OVER(PARTITION BY CAST([ColumnName] AS VARCHAR(MAX)) ORDER BY CAST([ColumnName] AS VARCHAR(MAX)))
+FROM [dbo].[TableName]
+)
+DELETE FROM CTE WHERE RN > 1 AND [ColumnName2] = [...]
